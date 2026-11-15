@@ -1,0 +1,100 @@
+# How my activity is sorted into groups, and how much the brain is told about each.
+#
+#   detail = "full"    the brain sees page titles and file names
+#   detail = "totals"  the brain sees only how much time I spent
+#   detail = "hidden"  the brain is not told at all
+#
+# apps  = part of a program's name
+# sites = website addresses
+# words = if a window title contains one of these, it belongs to this group
+#
+# Groups are checked from top to bottom; the first match wins.
+# Anything that matches nothing lands in "other", which is "totals".
+#
+# To add my own rules without sharing them, put them in private/my_categories.toml
+# using the same layout.
+
+[money_and_personal]
+detail = "totals"
+sites = ["paypal.com"]
+words = [
+    "bank", "credit card", "debit card", "loan",
+    "insurance", "password", "otp", "passport", "income tax",
+    "salary", "payslip", "hospital", "doctor", "prescription", "pharmacy",
+]
+
+[adult]
+detail = "hidden"
+sites = ["pornhub.com", "xvideos.com", "xnxx.com", "xhamster.com", "onlyfans.com"]
+words = ["porn", "nsfw"]
+
+[coding]
+detail = "full"
+apps = ["vscode", "code", "terminal", "kitty", "alacritty", "konsole", "jetbrains", "pycharm", "cursor"]
+sites = [
+    "github.com", "gitlab.com", "stackoverflow.com", "stackexchange.com", "pypi.org",
+    "docs.python.org", "readthedocs.io", "ros.org", "huggingface.co", "kaggle.com",
+    "colab.research.google.com",
+]
+
+[research]
+detail = "full"
+apps = ["rviz", "gazebo", "gz", "isaac", "mujoco", "zotero", "evince", "okular"]
+sites = [
+    "arxiv.org", "openreview.net", "scholar.google.com", "semanticscholar.org",
+    "paperswithcode.com", "ieeexplore.ieee.org", "acm.org", "nature.com",
+    "sciencedirect.com", "springer.com",
+]
+
+[video_making]
+detail = "full"
+apps = ["kdenlive", "resolve", "davinci", "obs", "shotcut", "audacity", "gimp", "inkscape", "blender", "krita"]
+sites = ["studio.youtube.com", "canva.com"]
+
+[learning]
+detail = "full"
+sites = [
+    "coursera.org", "edx.org", "udemy.com", "khanacademy.org", "wikipedia.org",
+    "brilliant.org",
+]
+
+[music]
+detail = "totals"
+apps = ["spotify", "rhythmbox"]
+sites = ["music.youtube.com", "open.spotify.com"]
+
+[watching_videos]
+detail = "totals"
+apps = ["vlc", "mpv", "totem"]
+sites = ["youtube.com", "youtu.be", "netflix.com", "primevideo.com", "twitch.tv"]
+
+[ai_chat]
+detail = "totals"
+sites = ["claude.ai", "chatgpt.com", "chat.openai.com", "gemini.google.com", "perplexity.ai"]
+
+[writing_and_notes]
+detail = "totals"
+apps = ["obsidian", "gedit", "texteditor", "libreoffice"]
+sites = ["docs.google.com", "notion.so", "overleaf.com"]
+
+[meetings]
+detail = "totals"
+apps = ["zoom"]
+sites = ["meet.google.com", "zoom.us", "teams.microsoft.com"]
+
+[social]
+detail = "totals"
+apps = ["discord", "telegram", "whatsapp"]
+sites = [
+    "reddit.com", "x.com", "twitter.com", "instagram.com", "facebook.com",
+    "linkedin.com", "discord.com", "web.whatsapp.com", "web.telegram.org",
+]
+
+[email]
+detail = "totals"
+apps = ["thunderbird"]
+sites = ["mail.google.com", "outlook.live.com", "outlook.office.com", "proton.me"]
+
+[shopping]
+detail = "totals"
+sites = ["amazon.com"]

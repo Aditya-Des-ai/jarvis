@@ -108,7 +108,7 @@ def time_at_laptop(notes: list[dict], settings: dict, groups: dict, page_sites: 
         is_browser = any(name in note["app"] for name in BROWSERS)
         title = clean_title(note["title"])
         site = page_sites.get(title, "") if is_browser else ""
-        if is_browser and title == "Jarvis":
+        if note["app"] == "jarvis" or (is_browser and title == "Jarvis"):   # the chat window itself
             group = "talking_to_jarvis"
         else:
             group = group_for(groups, note["app"], title, site)

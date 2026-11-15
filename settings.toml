@@ -1,0 +1,32 @@
+# Jarvis settings. Safe to share: nothing personal in here.
+# To change a setting just for yourself, copy the line into private/settings.toml.
+
+# Who does the thinking.
+#   "claude" = smarter. Sees only the cleaned daily summary and the memory notes.
+#   "local"  = fully offline. Needs Ollama installed. Weaker advice.
+brain = "claude"
+
+# Which Claude model to use for each job (only when brain = "claude").
+claude_model_for_checkins = "sonnet"   # the daily morning message
+claude_model_for_chat = "opus"         # conversations with me
+
+# Which local model to use (only when brain = "local").
+local_model = "qwen3:4b"
+
+# When the morning check-in runs. If the laptop is off, it runs at next login.
+morning_checkin_time = "09:00"
+
+# The chat window lives at http://localhost:<this number>
+chat_port = 8765
+
+# How often the window watcher looks at what I'm doing.
+seconds_between_window_checks = 30
+
+# No keyboard or mouse for this long counts as "away".
+away_after_seconds = 180
+
+# Where to look for my code projects (to count commits).
+folders_with_my_code = ["~"]
+
+# How many past days the brain gets to look at.
+days_of_history_for_brain = 7

@@ -5,6 +5,8 @@
     decisions.md             decisions I made and my reasons, so Jarvis learns how I think
     corrections.md           times Jarvis guessed wrong and what the real reason was
     things_to_bring_up.md    things Jarvis wants to raise with me later
+    past.md                  goals and views I used to hold (only read in deep mode)
+    archive/                 what the weekly tidy moved out; never deleted, never read
 
 The brain cannot write files. Instead it puts tags like this in its reply:
 
@@ -23,12 +25,27 @@ ALLOWED_NOTE_NAME = re.compile(r"^(areas/)?[a-z0-9_]+\.md$")
 INTERVIEW_FINISHED_TAG = "<interview_finished/>"
 
 
-def read_memory() -> str:
-    """All the notes joined into one text for the brain to read."""
+# Notes that are not read on every message.
+HISTORY_NOTE = "past.md"          # old goals and views; only read in deep mode
+NOT_FOR_THE_BRAIN = {"tidy_log.md"}
+
+
+def notes(include_past: bool = False) -> list:
+    """The notes the brain reads. The archive folder is never among them."""
     make_private_folders()
-    parts = []
-    for note in sorted(MEMORY.rglob("*.md")):
-        parts.append(f"----- note: {note.relative_to(MEMORY)} -----\n{note.read_text().strip()}\n")
+    found = sorted(MEMORY.glob("*.md")) + sorted((MEMORY / "areas").glob("*.md"))
+    return [
+        note for note in found
+        if note.name not in NOT_FOR_THE_BRAIN and (include_past or note.name != HISTORY_NOTE)
+    ]
+
+
+def read_memory(include_past: bool = False) -> str:
+    """The notes joined into one text for the brain to read."""
+    parts = [
+        f"----- note: {note.relative_to(MEMORY)} -----\n{note.read_text().strip()}\n"
+        for note in notes(include_past)
+    ]
     return "\n".join(parts) or "(No notes yet.)"
 
 

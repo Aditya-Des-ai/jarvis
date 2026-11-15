@@ -14,7 +14,7 @@ from pathlib import Path
 from brain.ask_brain import think
 from brain.memory import interview_finished, read_memory, save_what_to_remember
 from chat.history import add_message, all_messages, as_text
-from digest.make_digest import recent_digests
+from digest.make_digest import earlier_weeks, past_days, today_so_far
 from shared.settings import load_settings
 
 WHO_JARVIS_IS = (Path(__file__).parent / "who_jarvis_is.md").read_text()
@@ -39,31 +39,42 @@ When every area is covered, give a five-line summary of what you understood, and
 """
 
 
-def what_the_brain_reads() -> str:
+def stable_part(deep: bool = False) -> str:
+    """Who Jarvis is and what it knows. Put first because it rarely changes between
+    messages, so Claude can reuse it from its cache instead of reading it at full cost."""
     settings = load_settings()
+    who = WHO_JARVIS_IS if interview_finished() else WHO_JARVIS_IS + FIRST_INTERVIEW
+    return "\n\n".join([
+        who,
+        "===== EARLIER WEEKS (short summaries) =====\n" + earlier_weeks(),
+        "===== THEIR RECENT LAPTOP ACTIVITY (cleaned summaries, oldest first) =====\n"
+        + past_days(settings["days_of_history_for_brain"]),
+        "===== YOUR MEMORY NOTES =====\n" + read_memory(include_past=deep),
+    ])
+
+
+def changing_part() -> str:
+    """What is different every time: the clock, today so far, and the conversation."""
     return "\n\n".join([
         f"NOW: {datetime.now():%A %d %B %Y, %H:%M}",
-        "===== YOUR MEMORY NOTES =====\n" + read_memory(),
-        "===== THEIR RECENT LAPTOP ACTIVITY (cleaned summaries, oldest first) =====\n"
-        + recent_digests(settings["days_of_history_for_brain"]),
+        "===== TODAY SO FAR =====\n" + today_so_far(),
         "===== THE CONVERSATION SO FAR (latest last) =====\n"
         + as_text(all_messages()[-MESSAGES_TO_SHOW_BRAIN:]),
     ])
 
 
-def instructions() -> str:
-    return WHO_JARVIS_IS if interview_finished() else WHO_JARVIS_IS + FIRST_INTERVIEW
-
-
 def next_message(task: str, job: str = "chat") -> str:
-    """Ask the brain for Jarvis's next message, and store what it wants to remember."""
-    reply = think(instructions(), what_the_brain_reads() + "\n\n===== YOUR TASK =====\n" + task, job)
+    """Ask the brain for Jarvis's next message, and store what it wants to remember.
+
+    job "deep" uses the strongest model and also reads the history note (past.md).
+    """
+    reply = think(stable_part(deep=job == "deep"), changing_part() + "\n\n===== YOUR TASK =====\n" + task, job)
     return save_what_to_remember(reply)
 
 
-def reply_to_me() -> str:
+def reply_to_me(deep: bool = False) -> str:
     """Answer the latest message I sent (already saved in the history)."""
-    reply = next_message("Write your next message to them. Write only the message itself.")
+    reply = next_message("Write your next message to them. Write only the message itself.", "deep" if deep else "chat")
     add_message("jarvis", reply)
     return reply
 

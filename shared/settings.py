@@ -10,6 +10,7 @@ PRIVATE = PROJECT / "private"
 RECORDS = PRIVATE / "records"          # raw activity, one file per day
 WINDOW_RECORDS = RECORDS / "windows"
 DIGESTS = RECORDS / "digests"          # cleaned daily summaries
+WEEKS = RECORDS / "weeks"              # one short summary per week
 MEMORY = PRIVATE / "memory"            # what Jarvis knows about me
 CONTEXT = PRIVATE / "context"          # extra material I drop in for Jarvis to read
 CHAT = PRIVATE / "chat"                # our conversation history
@@ -25,6 +26,6 @@ def load_settings() -> dict:
 
 
 def make_private_folders() -> None:
-    for folder in (WINDOW_RECORDS, DIGESTS, MEMORY, MEMORY / "areas", CONTEXT, CHAT):
+    for folder in (WINDOW_RECORDS, DIGESTS, WEEKS, MEMORY, MEMORY / "archive", MEMORY / "areas", CONTEXT, CHAT):
         folder.mkdir(parents=True, exist_ok=True)
     PRIVATE.chmod(0o700)

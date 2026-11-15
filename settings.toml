@@ -6,9 +6,14 @@
 #   "local"  = fully offline. Needs Ollama installed. Weaker advice.
 brain = "claude"
 
-# Which Claude model to use for each job (only when brain = "claude").
-claude_model_for_checkins = "sonnet"   # the daily morning message
-claude_model_for_chat = "opus"         # conversations with me
+# Which Claude model does each job, and how hard it thinks (only when brain = "claude").
+# Models: "haiku" (cheapest), "sonnet", "opus" (strongest). Effort: low, medium, high.
+claude_model_for_checkins = "haiku"    # the daily morning message
+effort_for_checkins = "medium"
+claude_model_for_chat = "sonnet"       # everyday conversation, reading background
+effort_for_chat = "medium"
+claude_model_for_deep = "opus"         # deep mode (strategy talks) and the weekly tidy
+effort_for_deep = "medium"
 
 # Which local model to use (only when brain = "local").
 local_model = "qwen3:4b"
@@ -48,5 +53,12 @@ old_after_days = 60
 folders_with_my_notes = ["~/Documents"]
 
 # To let Jarvis read my Notion, put a key in private/settings.toml like this:
-#   notion_key = "secret_..."
+#   notion_key = "ntn_..."
 # Never put the key in this file.
+
+# The weekly tidy keeps the notes the brain reads on every message below this
+# size (in characters). Whatever no longer fits is moved to the archive, not deleted.
+notes_size_limit = 30000
+
+# When the weekly tidy runs.
+weekly_tidy_time = "Sun 20:00"

@@ -17,7 +17,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from shared.settings import DIGESTS, PRIVATE, RECORDS, WINDOW_RECORDS, load_settings, make_private_folders
+from shared.settings import DIGESTS, PRIVATE, RECORDS, WEEKS, WINDOW_RECORDS, load_settings, make_private_folders
 from digest.sort_with_local_model import sort_unknown
 from watchers.browser_history import visits_on
 from watchers.claude_code_sessions import sessions_on
@@ -260,12 +260,20 @@ def digest_for(day: date, redo: bool = False) -> str:
     return text
 
 
-def recent_digests(days: int) -> str:
-    """The last few days, oldest first, ending with today so far."""
+def past_days(days: int) -> str:
+    """The last few finished days, oldest first. These do not change, so they can be cached."""
     today = date.today()
-    parts = [digest_for(today - timedelta(days=back)) for back in range(days, 0, -1)]
-    parts.append(digest_for(today).replace("\n", f"  (today so far, as of {datetime.now():%H:%M})\n", 1))
-    return "\n".join(parts)
+    return "\n".join(digest_for(today - timedelta(days=back)) for back in range(days, 0, -1))
+
+
+def today_so_far() -> str:
+    return digest_for(date.today()).replace("\n", f"  (today so far, as of {datetime.now():%H:%M})\n", 1)
+
+
+def earlier_weeks(how_many: int = 8) -> str:
+    """Short summaries of earlier weeks, written by the weekly tidy."""
+    files = sorted(WEEKS.glob("*.md"))[-how_many:]
+    return "\n\n".join(file.read_text().strip() for file in files) or "(No weekly summaries yet.)"
 
 
 if __name__ == "__main__":

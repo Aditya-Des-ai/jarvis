@@ -32,12 +32,15 @@ class BrainProblem(Exception):
 def think(instructions: str, material: str, job: str = "chat") -> str:
     """Ask the brain. `instructions` say who it is; `material` is what it reads.
 
-    job is "chat" or "checkins" and picks which Claude model is used.
+    job is "checkins", "chat" or "deep". It picks which Claude model is used
+    and how hard it thinks (see settings.toml).
     """
     settings = load_settings()
     if settings["brain"] == "local":
         return ask_local_model(instructions, material, settings["local_model"])
-    return ask_claude(instructions, material, settings[f"claude_model_for_{job}"], job)
+    return ask_claude(
+        instructions, material, settings[f"claude_model_for_{job}"], settings[f"effort_for_{job}"], job
+    )
 
 
 def note_usage(job: str, model: str, answer: dict) -> None:
@@ -51,12 +54,24 @@ def note_usage(job: str, model: str, answer: dict) -> None:
             "model": model,
             "words_in": used.get("input_tokens", 0) + used.get("cache_creation_input_tokens", 0)
             + used.get("cache_read_input_tokens", 0),
+            # The part that was read from the cache, which costs a small fraction of the rest.
+            "of_which_cached": used.get("cache_read_input_tokens", 0),
             "words_out": used.get("output_tokens", 0),
             "price_if_paid_per_use": round(answer.get("total_cost_usd") or 0, 4),
         }) + "\n")
 
 
-def ask_claude(instructions: str, material: str, model: str, job: str = "chat") -> str:
+# One command-line argument cannot be longer than this on Linux.
+LONGEST_INSTRUCTIONS = 100_000
+
+
+def ask_claude(instructions: str, material: str, model: str, effort: str, job: str = "chat") -> str:
+    # The instructions are the part that stays the same from one message to the
+    # next, so Claude can reuse them from its cache at a fraction of the cost.
+    if len(instructions.encode()) > LONGEST_INSTRUCTIONS:
+        material = instructions + "\n\n" + material
+        instructions = "Follow the instructions at the start of the message."
+
     # Start clean: no settings from other Claude Code sessions, no saved history.
     clean = {name: value for name, value in os.environ.items() if not name.startswith("CLAUDE")}
     clean["PATH"] = os.path.expanduser("~/.local/bin") + ":" + clean.get("PATH", "/usr/bin:/bin")
@@ -64,6 +79,7 @@ def ask_claude(instructions: str, material: str, model: str, job: str = "chat") 
     command = [
         "claude", "--print",
         "--model", model,
+        "--effort", effort,
         "--system-prompt", instructions,
         "--tools", "",                  # no tools at all
         "--strict-mcp-config",          # no connectors (mail, drive and so on)

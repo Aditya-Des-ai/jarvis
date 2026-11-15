@@ -16,6 +16,7 @@ from brain.talk import next_message
 from chat.history import add_message, all_messages
 from chat.notify import notify
 from shared.settings import CHAT, make_private_folders
+from watchers.notion_pages import NotionProblem, fetch_notion
 
 NOTHING_TO_SAY = "NOTHING"
 
@@ -42,6 +43,11 @@ def main() -> None:
     if already_ran_today() and "--again" not in sys.argv:
         print("Already checked in today. Use --again to run it anyway.")
         return
+
+    try:
+        fetch_notion()      # does nothing unless a Notion key is set
+    except NotionProblem as problem:
+        print(problem)
 
     message = None
     for attempt in range(3):    # the laptop may have just woken up with no internet yet

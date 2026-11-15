@@ -18,9 +18,11 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from shared.settings import DIGESTS, PRIVATE, RECORDS, WINDOW_RECORDS, load_settings, make_private_folders
+from digest.sort_with_local_model import sort_unknown
 from watchers.browser_history import visits_on
 from watchers.claude_code_sessions import sessions_on
 from watchers.git_commits import commits_on
+from watchers.notion_pages import tracker_rows_on
 
 BROWSERS = ("firefox", "chromium", "chrome", "brave")
 BROWSER_NAME_IN_TITLE = re.compile(r"\s+[—–-]\s+(Mozilla Firefox|Chromium|Google Chrome|Brave)( Private Browsing)?$")
@@ -29,6 +31,7 @@ UNREAD_COUNT_IN_TITLE = re.compile(r"^\(\d+\+?\)\s+")
 MOST_DETAILS_PER_GROUP = 8
 SHORTEST_DETAIL_WORTH_LISTING = 120   # seconds
 LONGEST_TITLE = 90
+MOST_TRACKER_ROWS = 15
 
 
 # ---------- sorting activity into groups ----------
@@ -90,28 +93,55 @@ def window_notes_on(day: date) -> list[dict]:
 
 # ---------- building the summary ----------
 
-def time_at_laptop(notes: list[dict], seconds_each: int, groups: dict, page_sites: dict) -> tuple[list[str], dict]:
+def time_at_laptop(notes: list[dict], settings: dict, groups: dict, page_sites: dict) -> tuple[list[str], dict]:
     """Lines about where my screen time went, plus what could not be sorted."""
     here = [note for note in notes if not note["away"]]
     if not here:
         return [], {}
+    seconds_each = settings["seconds_between_window_checks"]
+
+    # First pass: sort every note with the written rules.
+    sorted_notes = []
+    unknown_example: dict[str, str] = {}
+    unknown_time: dict[str, float] = defaultdict(float)
+    for note in here:
+        is_browser = any(name in note["app"] for name in BROWSERS)
+        title = clean_title(note["title"])
+        site = page_sites.get(title, "") if is_browser else ""
+        if is_browser and title == "Jarvis":
+            group = "talking_to_jarvis"
+        else:
+            group = group_for(groups, note["app"], title, site)
+        name = site or note["app"]
+        if group == "other":
+            unknown_example.setdefault(name, title)
+            unknown_time[name] += seconds_each
+        sorted_notes.append((note, title, name, group))
+
+    # Second pass: let the local model sort what the rules did not recognise.
+    by_local_model: dict[str, str] = {}
+    if settings.get("sort_unknown_with_local_model"):
+        worth_asking = {
+            name: unknown_example[name] for name, seconds in unknown_time.items()
+            if seconds >= SHORTEST_DETAIL_WORTH_LISTING
+        }
+        by_local_model = sort_unknown(worth_asking, groups)
 
     time_in_group: dict[str, float] = defaultdict(float)
     time_on_detail: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
     hours_active = set()
     not_sorted: dict[str, float] = defaultdict(float)
 
-    for note in here:
-        is_browser = any(name in note["app"] for name in BROWSERS)
-        title = clean_title(note["title"])
-        site = page_sites.get(title, "") if is_browser else ""
-        group = group_for(groups, note["app"], title, site)
-
-        time_in_group[group] += seconds_each
-        time_on_detail[group][title or note["app"]] += seconds_each
+    for note, title, name, group in sorted_notes:
         hours_active.add(int(note["time"][11:13]))
         if group == "other":
-            not_sorted[site or note["app"]] += seconds_each
+            # Sorted by the local model: counts toward the time total only, titles are not kept.
+            group = by_local_model.get(name, "other")
+            if group == "other":
+                not_sorted[name] += seconds_each
+        else:
+            time_on_detail[group][title or note["app"]] += seconds_each
+        time_in_group[group] += seconds_each
 
     first, last = here[0]["time"][11:16], here[-1]["time"][11:16]
     lines = [
@@ -170,7 +200,7 @@ def make_digest(day: date) -> str:
 
     lines = [f"# {day:%A %d %B %Y}", ""]
 
-    screen_lines, not_sorted = time_at_laptop(notes, settings["seconds_between_window_checks"], groups, page_sites)
+    screen_lines, not_sorted = time_at_laptop(notes, settings, groups, page_sites)
     if screen_lines:
         lines += screen_lines
     elif visits:
@@ -197,6 +227,12 @@ def make_digest(day: date) -> str:
         lines.append(f"- {entry['project']}: {entry['commits']} commit(s)")
         for message in entry["messages"][:5]:
             lines.append(f"    - {message[:LONGEST_TITLE]}")
+
+    rows = tracker_rows_on(day)
+    if rows:
+        lines += ["", "## What I logged in my Notion trackers"]
+        for row in rows[:MOST_TRACKER_ROWS]:
+            lines.append(f"- {row['tracker']}: {row['text'][:300]}")
 
     if not_sorted:
         save_not_sorted(day, not_sorted)

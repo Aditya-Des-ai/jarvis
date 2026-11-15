@@ -36,7 +36,7 @@ You will be given raw material about this person: their own notes, summaries the
 Write these files:
 
 - about_me.md: who they are, what they are working on overall, how they think and decide, what they seem to value, how they write and like to be spoken to.
-- areas/<name>.md: one file per area of life you can see evidence for. Use short lowercase names with underscores. Go by the material.
+- areas/<name>.md: one file per area of life you can see evidence for. Use short lowercase names with underscores. Go by the material. If the person has named their areas (listed at the top of the material), create a file for each of those even when the material says nothing about it, and add any others you find.
 - things_to_bring_up.md: open questions, doubts or unfinished threads you found that Jarvis should ask about.
 
 Give each area file these headings:
@@ -126,6 +126,7 @@ def main() -> None:
     settings = load_settings()
 
     material = "\n\n".join([
+        "===== THE AREAS OF MY LIFE I NAMED =====\n" + (", ".join(settings["areas_of_my_life"]) or "(none named)"),
         "===== MY OWN NOTES =====\n" + notes_from_folders(settings.get("folders_with_my_notes", ["~/Documents"])),
         "===== EXTRA MATERIAL I PROVIDED =====\n" + notes_from_folders([str(CONTEXT)]),
         "===== WHAT I ASKED A CODING ASSISTANT =====\n" + what_i_asked_claude_code(),

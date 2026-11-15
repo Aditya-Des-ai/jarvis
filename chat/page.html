@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis</title>
+<style>
+  :root {
+    --page: #f4f2ee; --panel: #ffffff; --ink: #1d1c1a; --soft: #77736b;
+    --line: #e2ded6; --mine: #1f3a5f; --mine-ink: #ffffff; --accent: #b4532a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #141516; --panel: #1e2022; --ink: #e9e6e0; --soft: #8f8b83;
+      --line: #2e3033; --mine: #35557f; --mine-ink: #ffffff; --accent: #e08a5b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--page); color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  header {
+    width: 100%; max-width: 760px; padding: 18px 20px 10px;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: .02em; }
+  header span { color: var(--soft); font-size: 13px; }
+  #talk {
+    flex: 1; width: 100%; max-width: 760px; overflow-y: auto;
+    padding: 8px 20px 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .day { align-self: center; color: var(--soft); font-size: 12px; margin: 10px 0 2px; }
+  .message {
+    max-width: 82%; padding: 10px 14px; border-radius: 14px;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .message time { display: block; font-size: 11px; opacity: .6; margin-top: 4px; }
+  .jarvis { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .me { align-self: flex-end; background: var(--mine); color: var(--mine-ink); border-bottom-right-radius: 4px; }
+  .problem { align-self: center; color: var(--accent); font-size: 14px; text-align: center; }
+  .thinking { align-self: flex-start; color: var(--soft); font-size: 14px; padding: 4px 14px; }
+  form {
+    width: 100%; max-width: 760px; padding: 10px 20px 20px;
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+  textarea {
+    flex: 1; resize: none; min-height: 46px; max-height: 180px; padding: 11px 14px;
+    border: 1px solid var(--line); border-radius: 12px;
+    background: var(--panel); color: var(--ink); font: inherit;
+  }
+  textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    height: 46px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); font: inherit; cursor: pointer;
+  }
+  button.send { background: var(--mine); color: var(--mine-ink); border-color: var(--mine); }
+  button.recording { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  #note { width: 100%; max-width: 760px; padding: 0 20px; color: var(--soft); font-size: 13px; min-height: 20px; }
+</style>
+</head>
+<body>
+<header><h1>Jarvis</h1><span>only on this laptop</span></header>
+<div id="talk" aria-live="polite"></div>
+<div id="note"></div>
+<form id="form">
+  <button type="button" id="voice" title="Record a voice note">Voice</button>
+  <textarea id="box" rows="1" placeholder="Write to Jarvis" autofocus></textarea>
+  <button type="submit" class="send">Send</button>
+</form>
+
+<script>
+const TOKEN = "__TOKEN__";
+const talk = document.getElementById("talk");
+const box = document.getElementById("box");
+const note = document.getElementById("note");
+const voiceButton = document.getElementById("voice");
+let shown = "";
+
+function ask(path, options = {}) {
+  options.headers = Object.assign({"X-Jarvis-Token": TOKEN}, options.headers || {});
+  return fetch(path, options).then(answer => answer.json());
+}
+
+function draw(messages, thinking) {
+  const fingerprint = messages.length + ":" + thinking;
+  if (fingerprint === shown) return;
+  shown = fingerprint;
+
+  const nearBottom = talk.scrollHeight - talk.scrollTop - talk.clientHeight < 120;
+  talk.textContent = "";
+  let lastDay = "";
+  for (const message of messages) {
+    const when = new Date(message.time);
+    const day = when.toLocaleDateString(undefined, {weekday: "long", day: "numeric", month: "long"});
+    if (day !== lastDay) {
+      const label = document.createElement("div");
+      label.className = "day"; label.textContent = day;
+      talk.appendChild(label); lastDay = day;
+    }
+    const bubble = document.createElement("div");
+    bubble.className = "message " + message.who;
+    bubble.textContent = message.text;
+    if (message.who !== "problem") {
+      const time = document.createElement("time");
+      time.textContent = when.toLocaleTimeString(undefined, {hour: "2-digit", minute: "2-digit"});
+      bubble.appendChild(time);
+    }
+    talk.appendChild(bubble);
+  }
+  if (thinking) {
+    const dots = document.createElement("div");
+    dots.className = "thinking"; dots.textContent = "Jarvis is thinking...";
+    talk.appendChild(dots);
+  }
+  if (nearBottom) talk.scrollTop = talk.scrollHeight;
+}
+
+function refresh() {
+  ask("/messages").then(data => draw(data.messages || [], data.thinking)).catch(() => {
+    note.textContent = "Cannot reach Jarvis. Is it turned on?";
+  });
+}
+
+function grow() {
+  box.style.height = "auto";
+  box.style.height = Math.min(box.scrollHeight, 180) + "px";
+}
+
+document.getElementById("form").addEventListener("submit", event => {
+  event.preventDefault();
+  const text = box.value.trim();
+  if (!text) return;
+  box.value = ""; grow(); note.textContent = "";
+  ask("/send", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({text})})
+    .then(refresh);
+});
+
+box.addEventListener("input", grow);
+box.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    document.getElementById("form").requestSubmit();
+  }
+});
+
+// Voice notes: record, turn into text on this laptop, put the text in the box to check before sending.
+let recorder = null;
+voiceButton.addEventListener("click", async () => {
+  if (recorder) { recorder.stop(); return; }
+  let microphone;
+  try {
+    microphone = await navigator.mediaDevices.getUserMedia({audio: true});
+  } catch (problem) {
+    note.textContent = "Could not use the microphone. Allow it for this page and try again.";
+    return;
+  }
+  const pieces = [];
+  recorder = new MediaRecorder(microphone);
+  recorder.ondataavailable = event => pieces.push(event.data);
+  recorder.onstop = () => {
+    microphone.getTracks().forEach(track => track.stop());
+    recorder = null;
+    voiceButton.textContent = "Voice"; voiceButton.classList.remove("recording");
+    voiceButton.disabled = true;
+    note.textContent = "Turning your voice note into text...";
+    ask("/voice", {method: "POST", body: new Blob(pieces)}).then(data => {
+      voiceButton.disabled = false;
+      if (data.text) {
+        box.value = (box.value ? box.value + " " : "") + data.text;
+        grow(); box.focus();
+        note.textContent = "Check the text, then press Send.";
+      } else {
+        note.textContent = data.problem || "Heard nothing in that voice note.";
+      }
+    }).catch(() => { voiceButton.disabled = false; note.textContent = "Voice note failed."; });
+  };
+  recorder.start();
+  voiceButton.textContent = "Stop"; voiceButton.classList.add("recording");
+  note.textContent = "Recording. Press Stop when done.";
+});
+
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>

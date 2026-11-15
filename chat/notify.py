@@ -8,13 +8,9 @@ Try it:  python3 -m chat.notify "Hello from Jarvis"
 import subprocess
 import sys
 
-from shared.settings import load_settings
+from shared.settings import PROJECT
 
 LONGEST_PREVIEW = 220
-
-
-def chat_address() -> str:
-    return f"http://localhost:{load_settings()['chat_port']}"
 
 
 def notify(text: str) -> None:
@@ -36,7 +32,7 @@ def show_and_wait(text: str) -> None:
     except (subprocess.SubprocessError, OSError):
         return
     if clicked == "open":
-        subprocess.Popen(["xdg-open", chat_address()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen([str(PROJECT / "jarvis")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 if __name__ == "__main__":

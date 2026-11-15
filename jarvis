@@ -1,0 +1,45 @@
+#!/bin/bash
+# The one command for everything.
+#
+#   jarvis            open the chat window
+#   jarvis on         turn Jarvis on (and keep it on after every login)
+#   jarvis off        turn Jarvis off; nothing is recorded
+#   jarvis status     is everything running?
+#   jarvis today      show what the brain is told about today
+#   jarvis checkin    run the morning check-in right now
+#   jarvis read       read new background I put in private/context/
+#   jarvis notion     fetch my Notion pages, then read what is new
+#   jarvis usage      how much of my AI allowance Jarvis has used
+#   jarvis help       show this list
+
+project="$(dirname "$(readlink -f "$0")")"
+cd "$project" || exit 1
+
+open_chat() {
+    address="http://localhost:$(python3 -c "from shared.settings import load_settings; print(load_settings()['chat_port'])")"
+    if ! curl -s -o /dev/null --max-time 2 "$address"; then
+        echo "Jarvis is off. Turn it on with:  jarvis on"
+        exit 1
+    fi
+    # Open as its own small window, without tabs or an address bar, if a suitable browser exists.
+    for browser in chromium chromium-browser google-chrome brave-browser; do
+        if command -v "$browser" >/dev/null; then
+            nohup "$browser" --app="$address" --class=Jarvis --window-size=560,820 >/dev/null 2>&1 &
+            exit 0
+        fi
+    done
+    xdg-open "$address" >/dev/null 2>&1
+}
+
+case "${1:-chat}" in
+    chat)    open_chat ;;
+    on)      bash schedule/turn_on.sh ;;
+    off)     bash schedule/turn_off.sh ;;
+    status)  bash schedule/is_it_running.sh ;;
+    today)   python3 -m digest.make_digest ;;
+    checkin) python3 -m brain.morning_checkin --again ;;
+    read)    python3 -m brain.read_background ;;
+    notion)  python3 -m watchers.notion_pages && python3 -m brain.read_background ;;
+    usage)   python3 -m brain.usage ;;
+    *)       sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

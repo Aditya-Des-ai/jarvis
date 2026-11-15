@@ -18,8 +18,11 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+from datetime import datetime
 
-from shared.settings import load_settings
+from shared.settings import RECORDS, load_settings, make_private_folders
+
+USAGE_RECORD = RECORDS / "brain_usage.jsonl"
 
 
 class BrainProblem(Exception):
@@ -34,10 +37,26 @@ def think(instructions: str, material: str, job: str = "chat") -> str:
     settings = load_settings()
     if settings["brain"] == "local":
         return ask_local_model(instructions, material, settings["local_model"])
-    return ask_claude(instructions, material, settings[f"claude_model_for_{job}"])
+    return ask_claude(instructions, material, settings[f"claude_model_for_{job}"], job)
 
 
-def ask_claude(instructions: str, material: str, model: str) -> str:
+def note_usage(job: str, model: str, answer: dict) -> None:
+    """Keep a local record of how much each call used, so I can see what Jarvis costs me."""
+    used = answer.get("usage") or {}
+    make_private_folders()
+    with USAGE_RECORD.open("a") as file:
+        file.write(json.dumps({
+            "time": datetime.now().isoformat(timespec="seconds"),
+            "job": job,
+            "model": model,
+            "words_in": used.get("input_tokens", 0) + used.get("cache_creation_input_tokens", 0)
+            + used.get("cache_read_input_tokens", 0),
+            "words_out": used.get("output_tokens", 0),
+            "price_if_paid_per_use": round(answer.get("total_cost_usd") or 0, 4),
+        }) + "\n")
+
+
+def ask_claude(instructions: str, material: str, model: str, job: str = "chat") -> str:
     # Start clean: no settings from other Claude Code sessions, no saved history.
     clean = {name: value for name, value in os.environ.items() if not name.startswith("CLAUDE")}
     clean["PATH"] = os.path.expanduser("~/.local/bin") + ":" + clean.get("PATH", "/usr/bin:/bin")
@@ -68,6 +87,7 @@ def ask_claude(instructions: str, material: str, model: str) -> str:
         raise BrainProblem(f"Claude gave no readable answer: {done.stderr[:300] or done.stdout[:300]}") from problem
     if answer.get("is_error") or not answer.get("result"):
         raise BrainProblem(f"Claude reported a problem: {str(answer.get('result'))[:300]}")
+    note_usage(job, model, answer)
     return answer["result"].strip()
 
 
@@ -78,6 +98,9 @@ def ask_local_model(instructions: str, material: str, model: str) -> str:
         data=json.dumps({
             "model": model,
             "stream": False,
+            "keep_alive": "5m",
+            # Room to read the notes, the summaries and the conversation.
+            "options": {"num_ctx": 20000},
             "messages": [
                 {"role": "system", "content": instructions},
                 {"role": "user", "content": material},

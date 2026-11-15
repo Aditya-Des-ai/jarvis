@@ -30,3 +30,23 @@ folders_with_my_code = ["~"]
 
 # How many past days the brain gets to look at.
 days_of_history_for_brain = 7
+
+# Use the local model to sort apps and sites that match no rule in
+# digest/categories.toml. Things sorted this way only ever count as time
+# totals; their titles are never shown to the brain.
+sort_unknown_with_local_model = true
+
+# The areas of my life Jarvis keeps a note for, for example
+# ["work", "study", "health", "sleep"]. Empty means: work it out from my files.
+areas_of_my_life = []
+
+# Background material older than this many days is treated as "the past":
+# useful history, but never taken as a current goal without asking me.
+old_after_days = 60
+
+# Where to look for my own notes when drafting the first memory.
+folders_with_my_notes = ["~/Documents"]
+
+# To let Jarvis read my Notion, put a key in private/settings.toml like this:
+#   notion_key = "secret_..."
+# Never put the key in this file.

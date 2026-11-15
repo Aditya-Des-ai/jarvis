@@ -1,0 +1,11 @@
+# My personal data: records, memory, chat history. Never uploaded.
+private/
+
+# Secrets and settings that belong to one computer
+.env
+*.key
+
+# Python leftovers
+__pycache__/
+*.pyc
+.venv/

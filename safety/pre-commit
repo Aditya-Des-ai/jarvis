@@ -1,0 +1,13 @@
+#!/bin/sh
+# Runs automatically before every save to git.
+# Refuses the save if it contains anything from private/ or a secrets file,
+# even if someone forced it past .gitignore.
+
+blocked=$(git diff --cached --name-only | grep -E '^private/|(^|/)\.env$|\.key$')
+
+if [ -n "$blocked" ]; then
+    echo "STOPPED: these files hold personal data or secrets and must not be uploaded:"
+    echo "$blocked"
+    echo "Remove them with:  git restore --staged <file>"
+    exit 1
+fi

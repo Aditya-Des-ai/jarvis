@@ -1,13 +1,25 @@
 #!/bin/sh
-# Runs automatically before every save to git.
-# Refuses the save if it contains anything from private/ or a secrets file,
-# even if someone forced it past .gitignore.
+# Runs automatically before every save to git. It refuses the save if:
+#
+#   1. it contains anything from private/ or a secrets file
+#      (even if someone forced it past .gitignore), or
+#   2. the new text contains a word listed in private/never_publish.txt
+#      (one word or phrase per line: my name, my email, project names...).
 
 blocked=$(git diff --cached --name-only | grep -E '^private/|(^|/)\.env$|\.key$')
-
 if [ -n "$blocked" ]; then
     echo "STOPPED: these files hold personal data or secrets and must not be uploaded:"
     echo "$blocked"
     echo "Remove them with:  git restore --staged <file>"
     exit 1
+fi
+
+words="$(git rev-parse --show-toplevel)/private/never_publish.txt"
+if [ -s "$words" ]; then
+    found=$(git diff --cached -U0 | grep '^+' | grep -v '^+++' | grep -i -n -F -f "$words")
+    if [ -n "$found" ]; then
+        echo "STOPPED: the new text contains something listed in private/never_publish.txt:"
+        echo "$found" | cut -c1-160
+        exit 1
+    fi
 fi
